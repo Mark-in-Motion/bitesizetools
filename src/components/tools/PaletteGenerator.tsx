@@ -69,12 +69,14 @@ function getUniqueColors(allHexColors: string[], numColors: number): string[] {
     return [r, g, b];
   });
 
-  const result = kmeans(rgbColors, numColors);
+  // Pass an options object where `k` is numColors
+  const result = kmeans(rgbColors, { k: numColors });
+
   const centroids = result.centroids.map(([r, g, b]) => {
     return rgbToHex(Math.round(r), Math.round(g), Math.round(b));
   });
 
-  // Filter out near-black or near-white
+  // ... rest of your filtering code stays the same
   const noNearBW = centroids.filter((hex) => {
     const { r, g, b } = hexToRgb(hex);
     const nearBlack = r < 25 && g < 25 && b < 25;
@@ -82,9 +84,9 @@ function getUniqueColors(allHexColors: string[], numColors: number): string[] {
     return !nearBlack && !nearWhite;
   });
 
-  // Enforce variety and pick up to numColors
   return enforceColorDiversity(noNearBW, 20).slice(0, numColors);
 }
+
 
 // --------------------
 //   Main Component
