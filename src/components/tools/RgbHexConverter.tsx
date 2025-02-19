@@ -28,7 +28,8 @@ export function RgbHexConverter() {
 
   // Convert HEX to RGB (handles both "#ff0000" and "ff0000")
   const hexToRgb = (hex: string) => {
-    let cleanHex = hex.startsWith("#") ? hex : `#${hex}`;
+    // Fix: use 'const' instead of 'let'
+    const cleanHex = hex.startsWith("#") ? hex : `#${hex}`;
     const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(cleanHex);
     return match
       ? {
@@ -110,12 +111,17 @@ export function RgbHexConverter() {
             </div>
           ))}
           <div className="space-y-1">
-            <Label htmlFor="hex-output" className="text-lg font-semibold">HEX</Label>
+            <Label htmlFor="hex-output" className="text-lg font-semibold">
+              HEX
+            </Label>
             <Input id="hex-output" type="text" value={hex} readOnly className="w-full" />
             <Button
               variant="outline"
               onClick={copyHexToClipboard}
-              className={cn("w-full transition-colors", copied && "bg-green-500 text-white hover:bg-green-600")}
+              className={cn(
+                "w-full transition-colors",
+                copied && "bg-green-500 text-white hover:bg-green-600"
+              )}
             >
               {copied ? <Check className="mr-2 h-4 w-4" /> : <Clipboard className="mr-2 h-4 w-4" />}
               Copy
@@ -139,7 +145,9 @@ export function RgbHexConverter() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-1">
-            <Label htmlFor="hex-input" className="text-lg font-semibold">HEX</Label>
+            <Label htmlFor="hex-input" className="text-lg font-semibold">
+              HEX
+            </Label>
             <Input
               id="hex-input"
               type="text"
@@ -158,7 +166,10 @@ export function RgbHexConverter() {
             <Button
               variant="outline"
               onClick={copyRgbToClipboard}
-              className={cn("w-full transition-colors", rgbCopied && "bg-green-500 text-white hover:bg-green-600")}
+              className={cn(
+                "w-full transition-colors",
+                rgbCopied && "bg-green-500 text-white hover:bg-green-600"
+              )}
             >
               {rgbCopied ? <Check className="mr-2 h-4 w-4" /> : <Clipboard className="mr-2 h-4 w-4" />}
               Copy
