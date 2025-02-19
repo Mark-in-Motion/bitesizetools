@@ -32,7 +32,6 @@ export function PaletteGenerator() {
   const [fileName, setFileName] = useState<string>("(Default Image)");
   const [isUrlValid, setIsUrlValid] = useState<boolean>(false);
 
-  // Check if a URL ends with .jpg, .png, etc.
   function validateImageUrl(url: string): boolean {
     if (!url.trim()) return false;
     let urlObj: URL;
@@ -45,7 +44,10 @@ export function PaletteGenerator() {
     return ALLOWED_EXTENSIONS.some((ext) => pathname.endsWith(ext));
   }
 
-  // ---- Color Utility Functions ----
+  // --------------------------
+  //     Color Utilities
+  // --------------------------
+
   function rgbToHex(r: number, g: number, b: number) {
     return `#${((1 << 24) + (r << 16) + (g << 8) + b)
       .toString(16)
@@ -86,79 +88,90 @@ export function PaletteGenerator() {
     return filtered;
   }
 
-  function getUniqueColors(allHexColors: string[], numColors: number): string[] {
-    const rgbColors = allHexColors.map((hex) => {
-      const { r, g, b } = hexToRgb(hex);
-      return [r, g, b];
-    });
+  // Wrap getUniqueColors in useCallback to make it stable
+  const getUniqueColors = useCallback(
+    (allHexColors: string[], numColors: number): string[] => {
+      const rgbColors = allHexColors.map((hex) => {
+        const { r, g, b } = hexToRgb(hex);
+        return [r, g, b];
+      });
 
-    const result = kmeans(rgbColors, numColors);
-    const centroids = result.centroids.map(([r, g, b]) => {
-      return rgbToHex(Math.round(r), Math.round(g), Math.round(b));
-    });
+      const result = kmeans(rgbColors, numColors);
+      const centroids = result.centroids.map(([r, g, b]) => {
+        return rgbToHex(Math.round(r), Math.round(g), Math.round(b));
+      });
 
-    const noNearBW = centroids.filter((hex) => {
-      const { r, g, b } = hexToRgb(hex);
-      const nearBlack = r < 25 && g < 25 && b < 25;
-      const nearWhite = r > 230 && g > 230 && b > 230;
-      return !nearBlack && !nearWhite;
-    });
+      // Filter out near-black or near-white
+      const noNearBW = centroids.filter((hex) => {
+        const { r, g, b } = hexToRgb(hex);
+        const nearBlack = r < 25 && g < 25 && b < 25;
+        const nearWhite = r > 230 && g > 230 && b > 230;
+        return !nearBlack && !nearWhite;
+      });
 
-    return enforceColorDiversity(noNearBW, 20).slice(0, numColors);
-  }
+      return enforceColorDiversity(noNearBW, 20).slice(0, numColors);
+    },
+    []
+  );
 
-  // ---- Extract colors function (wrapped in useCallback) ----
-  const extractColors = useCallback(async (imageUrl: string) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // needed for html2canvas
-    img.src = imageUrl;
+  // Wrap extractColors in useCallback so it can safely depend on getUniqueColors
+  const extractColors = useCallback(
+    async (imageUrl: string) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous"; // needed for html2canvas
+      img.src = imageUrl;
 
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
 
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
 
-      const gridSize = 30;
-      const sampledColors: string[] = [];
+        const gridSize = 30;
+        const sampledColors: string[] = [];
 
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const pixelX = Math.floor((x / gridSize) * canvas.width);
-          const pixelY = Math.floor((y / gridSize) * canvas.height);
-          const pixelData = ctx.getImageData(pixelX, pixelY, 1, 1).data;
-          if (pixelData[3] === 0) continue;
-          const hex = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
-          sampledColors.push(hex);
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            const pixelX = Math.floor((x / gridSize) * canvas.width);
+            const pixelY = Math.floor((y / gridSize) * canvas.height);
+            const pixelData = ctx.getImageData(pixelX, pixelY, 1, 1).data;
+            if (pixelData[3] === 0) continue;
+            const hex = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
+            sampledColors.push(hex);
+          }
         }
-      }
 
-      const uniqueColors = getUniqueColors(sampledColors, 8);
-      const namedColors = uniqueColors.slice(0, 6).map((hex) => ({
-        hex,
-        name: getColorName(hex),
-      }));
+        const uniqueColors = getUniqueColors(sampledColors, 8);
+        const namedColors = uniqueColors.slice(0, 6).map((hex) => ({
+          hex,
+          name: getColorName(hex),
+        }));
 
-      setColors(namedColors);
-    };
+        setColors(namedColors);
+      };
 
-    img.onerror = () => {
-      console.error("Failed to load image from:", imageUrl);
-      alert("Invalid or inaccessible image URL.");
-    };
-  }, []);
+      img.onerror = () => {
+        console.error("Failed to load image from:", imageUrl);
+        alert("Invalid or inaccessible image URL.");
+      };
+    },
+    [getUniqueColors] // dependency
+  );
 
-  // Run extractColors whenever selectedImage changes
+  // useEffect calls extractColors whenever selectedImage changes
   useEffect(() => {
     if (selectedImage) {
       extractColors(selectedImage);
     }
   }, [selectedImage, extractColors]);
 
-  // ---- Handlers ----
+  // --------------------------
+  //       Handlers
+  // --------------------------
+
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
@@ -229,6 +242,10 @@ export function PaletteGenerator() {
     setIsUrlValid(validateImageUrl(val));
   }
 
+  // --------------------------
+  //       Render
+  // --------------------------
+
   return (
     <div className="space-y-6">
       {/* Top Controls */}
@@ -283,7 +300,7 @@ export function PaletteGenerator() {
                    grid-cols-1 md:grid-cols-[350px_auto]"
       >
         <div className="flex justify-center items-center">
-          {/* ESLint suggests <Image />, but we can disable the rule: */}
+          {/* We disable the next/no-img-element rule here */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedImage}
