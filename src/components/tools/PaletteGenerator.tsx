@@ -216,11 +216,15 @@ export function PaletteGenerator() {
   async function exportImage() {
     const element = document.getElementById("palette-container");
     if (!element) return;
-
+  
     // Hide clipboard icons
     const clipboardIcons = document.querySelectorAll(".clipboard-icon");
-    clipboardIcons.forEach((icon) => (icon.style.display = "none"));
-
+    clipboardIcons.forEach((icon) => {
+      if (icon instanceof HTMLElement) {
+        icon.style.display = "none";
+      }
+    });
+  
     // html2canvas with CORS
     const canvas = await html2canvas(element, {
       backgroundColor: "#ffffff",
@@ -228,15 +232,20 @@ export function PaletteGenerator() {
       useCORS: true,
       allowTaint: true,
     });
-
+  
     // Restore icons
-    clipboardIcons.forEach((icon) => (icon.style.display = "block"));
-
+    clipboardIcons.forEach((icon) => {
+      if (icon instanceof HTMLElement) {
+        icon.style.display = "block";
+      }
+    });
+  
     const link = document.createElement("a");
     link.download = "color-palette.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
   }
+  
 
   function regeneratePalette() {
     if (selectedImage) {
