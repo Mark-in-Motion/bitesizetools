@@ -13,6 +13,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Settings2, Check, Clipboard } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MinifierOptions {
   collapseWhitespace: boolean;
@@ -160,9 +161,12 @@ export function HtmlMinifier() {
           </Card>
           {output && (
             <Button
-              variant={copied ? "success" : "outline"} // Change button color on copy
+              variant="outline"
               onClick={handleCopy}
-              className="w-full flex items-center gap-2"
+              className={cn(
+                "w-full flex items-center gap-2",
+                copied && "bg-green-500 text-white hover:bg-green-600"
+              )}
             >
               {copied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
               {copied ? "Copied!" : "Copy Output"}
