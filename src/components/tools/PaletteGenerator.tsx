@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Link as LinkIcon, Clipboard, Check, Download, RefreshCcw } from "lucide-react";
+import {
+  Upload,
+  Link as LinkIcon,
+  Clipboard,
+  Check,
+  Download,
+  RefreshCcw,
+} from "lucide-react";
 import namer from "color-namer";
 import html2canvas from "html2canvas";
 import { kmeans } from "ml-kmeans";
@@ -13,24 +20,20 @@ interface Color {
   name: string;
 }
 
-// Allowed file extensions
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
-
-// Default image on page load
 const DEFAULT_IMAGE = "/images/palette-1.jpg";
 
 export function PaletteGenerator() {
+  // Keep the default image displayed initially
   const [selectedImage, setSelectedImage] = useState<string>(DEFAULT_IMAGE);
   const [colors, setColors] = useState<Color[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Additional states
-  // Start the text input *empty* so we don't display the link at first.
   const [imageUrlField, setImageUrlField] = useState<string>("");
   const [fileName, setFileName] = useState<string>("(Default Image)");
   const [isUrlValid, setIsUrlValid] = useState<boolean>(false);
 
-  // Validate the URL by extension
   function validateImageUrl(url: string): boolean {
     if (!url.trim()) return false;
     let urlObj: URL;
@@ -43,9 +46,12 @@ export function PaletteGenerator() {
     return ALLOWED_EXTENSIONS.some((ext) => pathname.endsWith(ext));
   }
 
-  // ----------- Color utilities -----------
+  // Color utilities
   function rgbToHex(r: number, g: number, b: number) {
-    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b)
+      .toString(16)
+      .slice(1)
+      .toUpperCase()}`;
   }
 
   function hexToRgb(hex: string) {
@@ -81,7 +87,6 @@ export function PaletteGenerator() {
     return filtered;
   }
 
-  // K-means clustering to get unique colors
   function getUniqueColors(allHexColors: string[], numColors: number): string[] {
     const rgbColors = allHexColors.map((hex) => {
       const { r, g, b } = hexToRgb(hex);
@@ -93,7 +98,7 @@ export function PaletteGenerator() {
       return rgbToHex(Math.round(r), Math.round(g), Math.round(b));
     });
 
-    // Filter out near-black/near-white
+    // Filter out near-black or near-white
     const noNearBW = centroids.filter((hex) => {
       const { r, g, b } = hexToRgb(hex);
       const nearBlack = r < 25 && g < 25 && b < 25;
@@ -104,6 +109,7 @@ export function PaletteGenerator() {
     return enforceColorDiversity(noNearBW, 20).slice(0, numColors);
   }
 
+  // On mount/update, extract colors from the current selectedImage
   useEffect(() => {
     if (selectedImage) {
       extractColors(selectedImage);
@@ -112,7 +118,8 @@ export function PaletteGenerator() {
 
   async function extractColors(imageUrl: string) {
     const img = new Image();
-    img.crossOrigin = "Anonymous";
+    // Set crossOrigin to "anonymous" for external images
+    img.crossOrigin = "anonymous";
     img.src = imageUrl;
 
     img.onload = () => {
@@ -132,7 +139,7 @@ export function PaletteGenerator() {
           const pixelX = Math.floor((x / gridSize) * canvas.width);
           const pixelY = Math.floor((y / gridSize) * canvas.height);
           const pixelData = ctx.getImageData(pixelX, pixelY, 1, 1).data;
-          if (pixelData[3] === 0) continue; // Skip transparent
+          if (pixelData[3] === 0) continue; // skip transparent
           const hex = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
           sampledColors.push(hex);
         }
@@ -149,11 +156,11 @@ export function PaletteGenerator() {
 
     img.onerror = () => {
       console.error("Failed to load image from:", imageUrl);
-      alert("Invalid image URL or inaccessible image.");
+      alert("Invalid or inaccessible image URL.");
     };
   }
 
-  // -------------- Handlers --------------
+  // Handlers
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
@@ -162,9 +169,9 @@ export function PaletteGenerator() {
       reader.onload = (event) => {
         if (event.target?.result) {
           setSelectedImage(event.target.result as string);
-          // Could set the text field to something like file.name, or leave it empty
+          // Clear out link field
           setImageUrlField("");
-          setIsUrlValid(false); 
+          setIsUrlValid(false);
         }
       };
       reader.readAsDataURL(file);
@@ -173,9 +180,8 @@ export function PaletteGenerator() {
 
   function handleUseLink() {
     if (!imageUrlField.trim()) return;
-
     const testImg = new Image();
-    testImg.crossOrigin = "Anonymous";
+    testImg.crossOrigin = "anonymous";
     testImg.onload = () => {
       setSelectedImage(imageUrlField.trim());
       setFileName("(Using URL)");
@@ -196,14 +202,19 @@ export function PaletteGenerator() {
     const element = document.getElementById("palette-container");
     if (!element) return;
 
+    // Hide clipboard icons
     const clipboardIcons = document.querySelectorAll(".clipboard-icon");
     clipboardIcons.forEach((icon) => (icon.style.display = "none"));
 
+    // Use html2canvas with CORS enabled
     const canvas = await html2canvas(element, {
       backgroundColor: "#ffffff",
       scale: 2,
+      useCORS: true,
+      allowTaint: true,
     });
 
+    // Show them back
     clipboardIcons.forEach((icon) => (icon.style.display = "block"));
 
     const link = document.createElement("a");
@@ -224,14 +235,17 @@ export function PaletteGenerator() {
     setIsUrlValid(validateImageUrl(val));
   }
 
-  // -------------- Render --------------
+  // Render
   return (
     <div className="space-y-6">
       {/* Top Controls */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {/* Upload Image Button + Filename */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start">
+        {/* Upload Image + file name */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => document.getElementById("image-upload")?.click()}>
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById("image-upload")?.click()}
+          >
             <Upload className="mr-2 h-4 w-4" />
             Upload Image
           </Button>
@@ -244,17 +258,9 @@ export function PaletteGenerator() {
           />
           <span className="text-sm text-muted-foreground">{fileName}</span>
         </div>
-
-        {/* Export Palette Button */}
-        {colors.length > 0 && (
-          <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={exportImage}>
-            <Download className="mr-2 h-4 w-4" />
-            Export Palette
-          </Button>
-        )}
       </div>
 
-      {/* URL field and Use Link button in one row */}
+      {/* URL field + Use Link */}
       <div className="flex items-center gap-2">
         <Input
           type="text"
@@ -271,14 +277,14 @@ export function PaletteGenerator() {
           Use Link
         </Button>
       </div>
-      {/* If invalid URL but user typed something */}
+      {/* Error if invalid extension */}
       {!isUrlValid && imageUrlField.length > 0 && (
         <p className="text-sm text-red-500">
           Must be a valid image URL (e.g. ends with .jpg, .png, etc.).
         </p>
       )}
 
-      {/* Main container */}
+      {/* Main container for the image + palette */}
       <div
         id="palette-container"
         className="bg-card border border-gray-200 dark:border-gray-700 p-6 rounded-md shadow-md 
@@ -286,18 +292,19 @@ export function PaletteGenerator() {
                    mx-auto
                    grid-cols-1 md:grid-cols-[350px_auto]"
       >
-        {/* Image display */}
+        {/* Displayed Image */}
         <div className="flex justify-center items-center">
           {selectedImage && (
             <img
               src={selectedImage}
               alt="Selected"
+              crossOrigin="anonymous"
               className="w-full h-auto max-h-[600px] object-contain"
             />
           )}
         </div>
 
-        {/* Color palette */}
+        {/* Color Palette */}
         <div className="w-full">
           {colors.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -331,15 +338,16 @@ export function PaletteGenerator() {
         </div>
       </div>
 
-      {/* Regenerate Button */}
+      {/* Bottom Controls: Regenerate + Export */}
       {selectedImage && (
-        <div className="flex justify-end">
-          <Button
-            className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
-            onClick={regeneratePalette}
-          >
-            <RefreshCcw className="w-4 h-4" />
+        <div className="flex justify-between items-center">
+          <Button variant="outline" onClick={regeneratePalette}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
             Regenerate Palette
+          </Button>
+          <Button variant="outline" onClick={exportImage}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Palette
           </Button>
         </div>
       )}
