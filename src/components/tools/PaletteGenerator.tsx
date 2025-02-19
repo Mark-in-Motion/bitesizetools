@@ -69,9 +69,9 @@ function getUniqueColors(allHexColors: string[], numColors: number): string[] {
     return [r, g, b];
   });
 
-  // Pass an options object where `k` is numColors
-  const result = kmeans(rgbColors, { k: numColors });
-
+  // Add a third argument (options), even if empty
+  const result = kmeans(rgbColors, numColors, { initialization: "kmeans++" });
+  
   const centroids = result.centroids.map(([r, g, b]) => {
     return rgbToHex(Math.round(r), Math.round(g), Math.round(b));
   });
